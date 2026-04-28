@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Tracker — Teacher</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f3f0;--surface:#fff;--surface2:#f9f8f6;--border:#e5e2db;--border2:#ccc8c0;
+  --ink:#1a1917;--ink2:#44403c;--ink3:#78716c;--ink4:#a8a29e;
+  --green:#16a34a;--green-bg:#dcfce7;--green-text:#14532d;
+  --amber:#d97706;--amber-bg:#fef3c7;--amber-text:#78350f;
+  --red:#dc2626;--red-bg:#fee2e2;--red-text:#7f1d1d;
+  --blue:#2563eb;--blue-bg:#dbeafe;--blue-text:#1e3a8a;
+  --accent:#1d6b4e;--accent-light:#d1fae5;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --r:10px;--r-lg:16px;--r-sm:6px;
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.05);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px}
+
+/* CONFIG SCREEN */
+.config-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+.config-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:2.5rem;width:480px;max-width:100%;box-shadow:var(--shadow)}
+.config-logo{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem}
+.config-logo svg{width:24px;height:24px;fill:white}
+.config-title{font-size:22px;font-weight:600;letter-spacing:-.03em;margin-bottom:.4rem}
+.config-sub{font-size:14px;color:var(--ink3);margin-bottom:2rem;line-height:1.6}
+.field-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink4);margin-bottom:6px}
+.field-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);font-family:var(--mono);font-size:13px;background:var(--surface2);color:var(--ink);outline:none;transition:border-color .15s;margin-bottom:1rem}
+.field-input:focus{border-color:var(--accent)}
+.field-input::placeholder{color:var(--ink4);font-family:var(--font)}
+.config-btn{width:100%;background:var(--accent);color:white;border:none;border-radius:var(--r-sm);padding:12px;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:.5rem}
+.config-btn:hover{opacity:.88}
+.config-hint{font-size:12px;color:var(--ink4);margin-top:1.25rem;line-height:1.7;padding:1rem;background:var(--surface2);border-radius:var(--r-sm)}
+.config-hint code{font-family:var(--mono);font-size:11px;background:var(--border);padding:1px 5px;border-radius:3px}
+.config-error{background:var(--red-bg);color:var(--red-text);border-radius:var(--r-sm);padding:.75rem 1rem;font-size:13px;margin-top:.75rem}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:10px}
+.logo{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo svg{width:17px;height:17px;fill:white}
+.app-name{font-weight:600;font-size:15px;letter-spacing:-.02em}
+.teacher-badge{font-size:11px;font-weight:600;background:var(--accent-light);color:var(--accent);border-radius:20px;padding:3px 10px;letter-spacing:.03em}
+.header-right{display:flex;gap:8px;align-items:center}
+.nav-tabs{display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:3px}
+.nav-tab{padding:5px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;border:none;background:none;font-family:var(--font);transition:all .15s}
+.nav-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.btn-sm-outline{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 12px;font-family:var(--font);font-size:13px;cursor:pointer;color:var(--ink2);transition:all .15s}
+.btn-sm-outline:hover{border-color:var(--border2)}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 56px)}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:1.25rem;display:flex;flex-direction:column;gap:1.25rem;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.sec-title{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink4);margin-bottom:.6rem}
+
+/* WEEK NAV */
+.week-nav{display:flex;align-items:center;gap:6px}
+.wn-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:16px;transition:all .15s;flex-shrink:0}
+.wn-btn:hover{background:var(--surface2);border-color:var(--border2)}
+.week-info{flex:1;text-align:center}
+.week-dates{font-size:12px;font-weight:600;color:var(--ink)}
+.week-sub{font-size:11px;color:var(--ink4)}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat{background:var(--surface2);border-radius:var(--r-sm);padding:.6rem .75rem;text-align:center}
+.stat-n{font-size:22px;font-weight:600;letter-spacing:-.03em}
+.stat-l{font-size:10px;color:var(--ink4);margin-top:2px}
+.n-green{color:var(--green)}.n-amber{color:var(--amber)}.n-red{color:var(--red)}.n-blue{color:var(--blue)}
+.prog-wrap{margin-top:.25rem}
+.prog-top{display:flex;justify-content:space-between;font-size:11px;color:var(--ink4);margin-bottom:4px}
+.prog-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .4s}
+
+/* TASKS */
+.tasks-list{display:flex;flex-direction:column;gap:5px}
+.task-pill{display:flex;align-items:center;gap:7px;padding:7px 9px;background:var(--surface2);border-radius:var(--r-sm);border:1px solid transparent;transition:border-color .12s}
+.task-pill:hover{border-color:var(--border)}
+.t-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.t-name{flex:1;font-size:12px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-del{background:none;border:none;cursor:pointer;color:var(--ink4);font-size:16px;line-height:1;padding:0;opacity:0;transition:opacity .15s,color .15s}
+.task-pill:hover .t-del{opacity:1}
+.t-del:hover{color:var(--red)}
+.add-row{display:flex;gap:5px;margin-top:6px}
+.add-row input{flex:1;padding:6px 9px;border:1px solid var(--border);border-radius:var(--r-sm);font-family:var(--font);font-size:12px;background:var(--surface);color:var(--ink);outline:none;transition:border-color .15s;min-width:0}
+.add-row input:focus{border-color:var(--accent)}
+.add-row input::placeholder{color:var(--ink4)}
+.btn-add{background:var(--accent);color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.btn-add:hover{opacity:.88}
+
+/* PENDING ALERTS */
+.pending-section{background:var(--amber-bg);border:1px solid #fde68a;border-radius:var(--r);padding:.85rem;margin-bottom:1rem}
+.pending-header{font-size:12px;font-weight:600;color:var(--amber-text);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.pending-item{font-size:12px;color:var(--amber-text);padding:3px 0;display:flex;align-items:center;gap:6px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--amber);flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* MAIN */
+.main{padding:1.5rem;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-.03em}
+.page-actions{display:flex;gap:6px}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink4);padding:10px 14px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+th.th-center{text-align:center}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--surface2)}
+tbody tr.all-done-row{background:#f0fdf4}
+
+.sname{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+.avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.student-code{font-size:10px;font-family:var(--mono);color:var(--ink4);letter-spacing:.05em}
+
+.check-wrap{text-align:center}
+.check-btn{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--border2);background:var(--surface);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;vertical-align:middle}
+.check-btn:hover{border-color:var(--accent);background:var(--accent-light)}
+.check-btn.done{background:var(--accent);border-color:var(--accent)}
+.check-btn.done svg{display:block}
+.check-btn.pending-check{border-color:var(--amber);background:var(--amber-bg);animation:borderPulse 2s infinite}
+@keyframes borderPulse{0%,100%{border-color:var(--amber)}50%{border-color:#fbbf24}}
+.check-btn svg{display:none;width:12px;height:12px;stroke:white;stroke-width:2.5;fill:none}
+.check-btn.done svg{display:block}
+
+.row-prog{display:flex;align-items:center;gap:7px;min-width:90px}
+.row-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.row-fill{height:100%;border-radius:2px;transition:width .3s}
+.row-frac{font-size:11px;font-family:var(--mono);color:var(--ink4);min-width:28px;text-align:right}
+
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;letter-spacing:.02em;white-space:nowrap}
+.badge-done{background:var(--green-bg);color:var(--green-text)}
+.badge-prog{background:var(--amber-bg);color:var(--amber-text)}
+.badge-none{background:var(--border);color:var(--ink4)}
+.badge-pending{background:var(--blue-bg);color:var(--blue-text)}
+
+/* SUMMARY PAGE */
+.summary-wrap{display:flex;flex-direction:column;gap:1.25rem}
+.sum-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.5rem;box-shadow:var(--shadow)}
+.sum-hero-title{font-size:18px;font-weight:600;letter-spacing:-.02em;margin-bottom:1rem}
+.sum-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem}
+.sum-stat{background:var(--surface2);border-radius:var(--r);padding:.85rem 1rem;text-align:center}
+.sum-stat-n{font-size:26px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.sum-stat-l{font-size:11px;color:var(--ink4);margin-top:3px}
+
+.tl-section,.incomplete-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.5rem;box-shadow:var(--shadow)}
+.section-title{font-size:15px;font-weight:600;margin-bottom:1rem}
+.tl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.tl-card{border-radius:var(--r);padding:.85rem .75rem;text-align:center;border:1px solid transparent}
+.tl-card.green{background:var(--green-bg);border-color:#bbf7d0}
+.tl-card.amber{background:var(--amber-bg);border-color:#fde68a}
+.tl-card.blue{background:var(--blue-bg);border-color:#bfdbfe}
+.tl-card.red{background:var(--red-bg);border-color:#fecaca}
+.tl-light{width:16px;height:16px;border-radius:50%;margin:0 auto 6px}
+.tl-card.green .tl-light{background:var(--green)}
+.tl-card.amber .tl-light{background:var(--amber)}
+.tl-card.blue .tl-light{background:var(--blue)}
+.tl-card.red .tl-light{background:var(--red)}
+.tl-name{font-size:12px;font-weight:600}
+.tl-frac{font-size:11px;color:var(--ink3);margin-top:2px}
+
+.incomplete-table{width:100%;border-collapse:collapse}
+.incomplete-table th{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink4);padding:8px 12px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border)}
+.incomplete-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.incomplete-table tr:last-child td{border-bottom:none}
+.incomplete-table tr:hover td{background:var(--surface2)}
+.missing-pills{display:flex;flex-wrap:wrap;gap:5px}
+.mpill{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:500}
+
+/* STUDENTS PAGE */
+.students-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.stu-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem;box-shadow:var(--shadow)}
+.stu-card-top{display:flex;align-items:center;gap:10px;margin-bottom:.75rem}
+.stu-name{font-weight:600;font-size:14px}
+.stu-code{font-size:11px;font-family:var(--mono);color:var(--ink4);letter-spacing:.04em;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 6px}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:500;animation:fi .15s}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--border);padding:1.75rem;width:420px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.15);animation:su .2s}
+@keyframes su{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:.4rem}
+.modal-sub{font-size:13px;color:var(--ink3);margin-bottom:1rem}
+.modal textarea{width:100%;height:150px;border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;font-family:var(--font);font-size:13px;background:var(--surface2);color:var(--ink);outline:none;resize:none}
+.modal textarea:focus{border-color:var(--accent)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:500;z-index:600;box-shadow:0 4px 20px rgba(0,0,0,.2);animation:ti .2s;white-space:nowrap}
+@keyframes ti{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* LOADING */
+.loading{text-align:center;padding:3rem;color:var(--ink4);font-size:14px}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:3rem;color:var(--ink4)}
+
+/* CODES TABLE */
+.codes-note{background:var(--blue-bg);border:1px solid #bfdbfe;border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:13px;color:var(--blue-text);line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- CONFIG SCREEN -->
+<div id="config-screen" class="config-screen">
+  <div class="config-box">
+    <div class="config-logo"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="3" rx="1.5"/><rect x="2" y="10" width="14" height="3" rx="1.5"/><rect x="2" y="17" width="17" height="3" rx="1.5"/></svg></div>
+    <div class="config-title">Class Task Tracker</div>
+    <div class="config-sub">Enter your Supabase credentials to connect your database. You only need to do this once — they'll be saved in your browser.</div>
+    <div class="field-label">Supabase Project URL</div>
+    <input class="field-input" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co" type="url">
+    <div class="field-label">Supabase Anon Key</div>
+    <input class="field-input" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." type="text">
+    <button class="config-btn" onclick="saveConfig()">Connect & Launch</button>
+    <div id="config-error" style="display:none" class="config-error"></div>
+    <div class="config-hint">
+      <strong>Where to find these:</strong> Go to <code>supabase.com</code> → your project → Settings → API.<br>
+      Copy the <code>Project URL</code> and the <code>anon public</code> key.
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until connected) -->
+<div id="app" style="display:none">
+  <header class="header">
+    <div class="header-left">
+      <div class="logo"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="3" rx="1.5"/><rect x="2" y="10" width="14" height="3" rx="1.5"/><rect x="2" y="17" width="17" height="3" rx="1.5"/></svg></div>
+      <span class="app-name">Class Task Tracker</span>
+      <span class="teacher-badge">Teacher</span>
+    </div>
+    <div class="header-right">
+      <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showPage('tracker')">Tracker</button>
+        <button class="nav-tab" onclick="showPage('summary')">Summary</button>
+        <button class="nav-tab" onclick="showPage('students')">Students & Codes</button>
+      </div>
+      <button class="btn-sm-outline" onclick="exportCSV()">Export CSV</button>
+      <button class="btn-sm-outline" onclick="disconnect()" title="Change Supabase connection">⚙</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div>
+        <div class="sec-title">Week</div>
+        <div class="week-nav">
+          <button class="wn-btn" onclick="navWeek(-1)">&#8249;</button>
+          <div class="week-info">
+            <div class="week-dates" id="wk-dates">—</div>
+            <div class="week-sub" id="wk-sub">—</div>
+          </div>
+          <button class="wn-btn" onclick="navWeek(1)">&#8250;</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="sec-title">Class overview</div>
+        <div class="stats-grid">
+          <div class="stat"><div class="stat-n n-green" id="s-done">0</div><div class="stat-l">All done</div></div>
+          <div class="stat"><div class="stat-n n-amber" id="s-prog">0</div><div class="stat-l">Partial</div></div>
+          <div class="stat"><div class="stat-n n-red" id="s-none">0</div><div class="stat-l">Not started</div></div>
+          <div class="stat"><div class="stat-n n-blue" id="s-pending">0</div><div class="stat-l">Flagged</div></div>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-top"><span>Completion</span><span id="s-pct">0%</span></div>
+          <div class="prog-bar"><div class="prog-fill" id="s-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sec-title">Tasks this week <span id="task-count" style="font-weight:400;text-transform:none;letter-spacing:0">(0/5)</span></div>
+        <div class="tasks-list" id="tasks-list"><div class="loading" style="padding:1rem"><div class="spinner"></div></div></div>
+        <div id="add-task-area">
+          <div class="add-row">
+            <input type="text" id="task-input" placeholder="Add a task…" maxlength="60" onkeydown="if(event.key==='Enter')doAddTask()">
+            <button class="btn-add" onclick="doAddTask()">Add</button>
+          </div>
+        </div>
+        <div id="task-max" style="display:none;font-size:11px;color:var(--ink4);text-align:center;margin-top:6px">Max 5 tasks per week</div>
+      </div>
+    </aside>
+
+    <main class="main" id="main-content">
+      <div class="loading"><div class="spinner"></div>Loading...</div>
+    </main>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+const TASK_COLORS=['#1d6b4e','#2563eb','#d97706','#7c3aed','#dc2626'];
+const AV_COLORS=[['#d1fae5','#065f46'],['#dbeafe','#1e3a8a'],['#fef3c7','#78350f'],['#ede9fe','#3b0764'],['#fee2e2','#7f1d1d'],['#cffafe','#164e63'],['#fce7f3','#831843'],['#fef9c3','#713f12']];
+
+const STUDENTS=['Adelaida','Anja','Archie','Charlie','Dom','Dylan','Eddie','Ellie','Freya','Harper','Heath','Hemen','Hermela','Hugh','Hunter','Jonathan','Kaylee','Maya','Mayan','Mia','Michael','Milla','Naisa','Quinn','Rory','Ryder','Savannah','Tegh'];
+
+let sb=null;
+let currentWeek=null;
+let weekOffset=0;
+let currentPage='tracker';
+let tasks=[];
+let completions=[];
+let students=[];
+let realtimeSub=null;
+
+// ── CONFIG ──────────────────────────────────────────
+function saveConfig(){
+  const url=document.getElementById('cfg-url').value.trim();
+  const key=document.getElementById('cfg-key').value.trim();
+  if(!url||!key){showConfigError('Please fill in both fields.');return;}
+  localStorage.setItem('sb_url',url);
+  localStorage.setItem('sb_key',key);
+  initSupabase(url,key);
+}
+function disconnect(){
+  if(!confirm('Disconnect and change Supabase settings?'))return;
+  localStorage.removeItem('sb_url');localStorage.removeItem('sb_key');
+  location.reload();
+}
+function showConfigError(msg){
+  const el=document.getElementById('config-error');
+  el.textContent=msg;el.style.display='block';
+}
+async function initSupabase(url,key){
+  try{
+    sb=supabase.createClient(url,key);
+    // test connection
+    const {error}=await sb.from('students').select('id').limit(1);
+    if(error&&error.code!=='PGRST116'&&error.message.includes('does not exist')){
+      // table doesn't exist yet — we'll create via instructions
+    }
+    if(error&&!error.message.includes('does not exist')){
+      showConfigError('Connection failed: '+error.message);return;
+    }
+    document.getElementById('config-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    currentWeek=getWeekKey(0);
+    await ensureStudents();
+    await loadAll();
+    subscribeRealtime();
+  }catch(e){
+    showConfigError('Could not connect. Check your URL and key.');
+  }
+}
+
+// ── WEEK ──────────────────────────────────────────
+function getWeekKey(off){
+  const d=new Date();
+  d.setDate(d.getDate()-d.getDay()+1+off*7);
+  return d.toISOString().split('T')[0];
+}
+function weekLabel(k){
+  const d=new Date(k+'T00:00:00');
+  const e=new Date(d);e.setDate(d.getDate()+4);
+  const f=dt=>dt.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+  return `${f(d)} – ${f(e)}`;
+}
+async function navWeek(d){
+  weekOffset+=d;currentWeek=getWeekKey(weekOffset);
+  await loadAll();
+}
+
+// ── DATA ──────────────────────────────────────────
+async function ensureStudents(){
+  const {data}=await sb.from('students').select('*');
+  if(!data||data.length===0){
+    // seed students
+    const rows=STUDENTS.map(name=>({name,code:genCode(name)}));
+    await sb.from('students').insert(rows);
+  }
+}
+function genCode(name){
+  return (name.slice(0,4).toUpperCase()+Math.floor(10+Math.random()*90)).replace(/\s/g,'');
+}
+
+async function loadAll(){
+  updateWeekUI();
+  const [sRes,tRes,cRes]=await Promise.all([
+    sb.from('students').select('*').order('name'),
+    sb.from('tasks').select('*').eq('week_key',currentWeek).order('created_at'),
+    sb.from('completions').select('*').eq('week_key',currentWeek)
+  ]);
+  students=sRes.data||[];
+  tasks=tRes.data||[];
+  completions=cRes.data||[];
+  renderAll();
+}
+
+function updateWeekUI(){
+  document.getElementById('wk-dates').textContent=weekLabel(currentWeek);
+  document.getElementById('wk-sub').textContent=new Date(currentWeek+'T00:00:00').getFullYear();
+}
+
+function subscribeRealtime(){
+  if(realtimeSub)sb.removeChannel(realtimeSub);
+  realtimeSub=sb.channel('tracker-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'completions'},()=>loadAll())
+    .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>loadAll())
+    .subscribe();
+}
+
+// ── TASKS ──────────────────────────────────────────
+async function doAddTask(){
+  const el=document.getElementById('task-input');
+  const name=el.value.trim();if(!name)return;
+  if(tasks.length>=5){showToast('Max 5 tasks');return;}
+  el.value='';
+  const{error}=await sb.from('tasks').insert({name,week_key:currentWeek});
+  if(error){showToast('Error adding task');return;}
+  await loadAll();
+}
+async function removeTask(id){
+  await sb.from('tasks').delete().eq('id',id);
+  await sb.from('completions').delete().eq('task_id',id);
+  await loadAll();
+}
+
+// ── COMPLETIONS ──────────────────────────────────────────
+async function toggleCompletion(studentId,taskId){
+  const existing=completions.find(c=>c.student_id===studentId&&c.task_id===taskId);
+  if(existing){
+    if(existing.status==='done'){
+      await sb.from('completions').delete().eq('id',existing.id);
+    }else{
+      // pending → confirm as done
+      await sb.from('completions').update({status:'done',flagged_at:null,confirmed_at:new Date().toISOString()}).eq('id',existing.id);
+      showToast('✓ Confirmed done');
+    }
+  }else{
+    await sb.from('completions').insert({student_id:studentId,task_id:taskId,week_key:currentWeek,status:'done',confirmed_at:new Date().toISOString()});
+  }
+  await loadAll();
+}
+
+function getComp(studentId,taskId){
+  return completions.find(c=>c.student_id===studentId&&c.task_id===taskId)||null;
+}
+function getProgress(studentId){
+  if(!tasks.length)return{done:0,total:0,pct:0,pending:0};
+  const done=tasks.filter(t=>{const c=getComp(studentId,t.id);return c&&c.status==='done';}).length;
+  const pending=tasks.filter(t=>{const c=getComp(studentId,t.id);return c&&c.status==='pending';}).length;
+  return{done,total:tasks.length,pct:Math.round(done/tasks.length*100),pending};
+}
+
+// ── RENDER ──────────────────────────────────────────
+function renderAll(){
+  renderSidebar();
+  if(currentPage==='tracker')renderTracker();
+  else if(currentPage==='summary')renderSummary();
+  else renderStudentsPage();
+}
+
+function renderSidebar(){
+  // tasks
+  document.getElementById('task-count').textContent=`(${tasks.length}/5)`;
+  document.getElementById('tasks-list').innerHTML=tasks.length
+    ?tasks.map((t,i)=>`
+      <div class="task-pill">
+        <div class="t-dot" style="background:${TASK_COLORS[i%5]}"></div>
+        <span class="t-name" title="${esc(t.name)}">${esc(t.name)}</span>
+        <button class="t-del" onclick="removeTask('${t.id}')">×</button>
+      </div>`).join('')
+    :'<div style="font-size:12px;color:var(--ink4);text-align:center;padding:.5rem 0">No tasks set</div>';
+  document.getElementById('add-task-area').style.display=tasks.length>=5?'none':'block';
+  document.getElementById('task-max').style.display=tasks.length>=5?'block':'none';
+
+  // stats
+  let done=0,prog=0,none=0,pending=0,totalCk=0,doneCk=0;
+  students.forEach(s=>{
+    const p=getProgress(s.id);
+    totalCk+=p.total;doneCk+=p.done;
+    if(p.pending>0)pending++;
+    if(p.total&&p.done===p.total)done++;
+    else if(p.done>0)prog++;
+    else none++;
+  });
+  const pct=totalCk?Math.round(doneCk/totalCk*100):0;
+  document.getElementById('s-done').textContent=done;
+  document.getElementById('s-prog').textContent=prog;
+  document.getElementById('s-none').textContent=none;
+  document.getElementById('s-pending').textContent=pending;
+  document.getElementById('s-pct').textContent=pct+'%';
+  document.getElementById('s-fill').style.width=pct+'%';
+}
+
+function renderTracker(){
+  const pendingItems=[];
+  students.forEach(s=>{
+    tasks.forEach(t=>{
+      const c=getComp(s.id,t.id);
+      if(c&&c.status==='pending')pendingItems.push({student:s,task:t});
+    });
+  });
+
+  let pendingHTML='';
+  if(pendingItems.length){
+    pendingHTML=`<div class="pending-section">
+      <div class="pending-header"><div class="pulse"></div>${pendingItems.length} student${pendingItems.length!==1?'s':''} flagged work for checking</div>
+      ${pendingItems.map(({student,task})=>`
+        <div class="pending-item">
+          <div class="pulse"></div>
+          <strong>${esc(student.name)}</strong> → ${esc(task.name)}
+        </div>`).join('')}
+    </div>`;
+  }
+
+  const taskHeaders=tasks.map((t,i)=>`<th class="th-center"><div style="font-size:10px;max-width:70px;white-space:normal;text-align:center;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:${TASK_COLORS[i%5]}">${esc(t.name)}</div></th>`).join('');
+
+  const rows=students.map(s=>{
+    const p=getProgress(s.id);
+    const allDone=p.total&&p.done===p.total;
+    const [bg,fg]=AV_COLORS[s.id.charCodeAt?s.id.charCodeAt(0)%8:s.id%8];
+    const barColor=allDone?'#16a34a':p.done>0?'#d97706':'#cbd5e1';
+
+    const cells=tasks.map(t=>{
+      const c=getComp(s.id,t.id);
+      const isDone=c&&c.status==='done';
+      const isPending=c&&c.status==='pending';
+      let cls='check-btn';
+      if(isDone)cls+=' done';
+      if(isPending)cls+=' pending-check';
+      const title=isDone?'Click to unmark':isPending?'Student flagged — click to confirm ✓':'Mark complete';
+      return `<td class="check-wrap">
+        <button class="${cls}" onclick="toggleCompletion('${s.id}','${t.id}')" title="${title}">
+          <svg viewBox="0 0 12 12"><polyline points="1.5,6 4.5,9.5 10.5,2.5"/></svg>
+        </button>
+        ${isPending?'<div style="font-size:9px;color:var(--amber);margin-top:2px;font-weight:600">CHECK</div>':''}
+      </td>`;
+    }).join('');
+
+    let badge='';
+    if(!p.total)badge='<span class="badge badge-none">—</span>';
+    else if(p.pending>0)badge='<span class="badge badge-pending">Flagged</span>';
+    else if(allDone)badge='<span class="badge badge-done">Done</span>';
+    else if(p.done>0)badge='<span class="badge badge-prog">Partial</span>';
+    else badge='<span class="badge badge-none">Not started</span>';
+
+    const initials=s.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const avIdx=s.name.charCodeAt(0)%8;
+    const [avBg,avFg]=AV_COLORS[avIdx];
+
+    return `<tr ${allDone?'class="all-done-row"':''}>
+      <td>
+        <div class="sname">
+          <div class="avatar" style="background:${avBg};color:${avFg}">${initials}</div>
+          ${esc(s.name)}
+        </div>
+        <div class="student-code">${esc(s.code||'')}</div>
+      </td>
+      ${cells}
+      <td>
+        <div class="row-prog">
+          <div class="row-bar"><div class="row-fill" style="width:${p.pct}%;background:${barColor}"></div></div>
+          <span class="row-frac">${p.done}/${p.total}</span>
+        </div>
+      </td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('main-content').innerHTML=`
+    ${pendingHTML}
+    <div class="page-header">
+      <div class="page-title">Week of ${weekLabel(currentWeek)}</div>
+      <div class="page-actions">
+        <button class="btn-sm-outline" onclick="markAllDone()">Mark all done</button>
+        <button class="btn-sm-outline" onclick="clearWeek()">Clear week</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:160px">Student</th>
+          ${taskHeaders}
+          <th style="width:110px">Progress</th>
+          <th style="width:100px">Status</th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="10" class="empty-state">No students found</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderSummary(){
+  let done=0,prog=0,none=0,pending=0,totalCk=0,doneCk=0;
+  students.forEach(s=>{
+    const p=getProgress(s.id);
+    totalCk+=p.total;doneCk+=p.done;
+    if(p.pending>0)pending++;
+    if(p.total&&p.done===p.total)done++;
+    else if(p.done>0)prog++;
+    else none++;
+  });
+  const pct=totalCk?Math.round(doneCk/totalCk*100):0;
+
+  const tlCards=students.map(s=>{
+    const p=getProgress(s.id);
+    let cls='',label='—';
+    if(!p.total){cls='';label='No tasks';}
+    else if(p.pending>0){cls='blue';label=`Flagged ${p.pending}`;}
+    else if(p.done===p.total){cls='green';label='All done';}
+    else if(p.done>0){cls='amber';label=`${p.done}/${p.total}`;}
+    else{cls='red';label='Not started';}
+    return `<div class="tl-card ${cls}">
+      <div class="tl-light"></div>
+      <div class="tl-name">${esc(s.name)}</div>
+      <div class="tl-frac">${label}</div>
+    </div>`;
+  }).join('');
+
+  const incomplete=students.filter(s=>{
+    const p=getProgress(s.id);
+    return p.total>0&&p.done<p.total;
+  });
+  const incompleteRows=incomplete.length
+    ?incomplete.map(s=>{
+        const p=getProgress(s.id);
+        const missing=tasks.filter(t=>{const c=getComp(s.id,t.id);return !c||c.status!=='done';});
+        const pills=missing.map((t,i)=>{
+          const ci=tasks.indexOf(t);
+          const c=TASK_COLORS[ci%5];
+          const comp=getComp(s.id,t.id);
+          const isPending=comp&&comp.status==='pending';
+          return `<span class="mpill" style="background:${c}18;color:${c};border:1px solid ${c}30">${esc(t.name)}${isPending?' 🚩':''}</span>`;
+        }).join('');
+        return `<tr>
+          <td style="font-weight:600">${esc(s.name)}</td>
+          <td><span class="badge ${p.done>0?'badge-prog':'badge-none'}">${p.done}/${p.total}</span></td>
+          <td><div class="missing-pills">${pills}</div></td>
+        </tr>`;
+      }).join('')
+    :`<tr><td colspan="3" class="empty-state">${tasks.length?'🎉 All students have completed their tasks!':'No tasks set this week.'}</td></tr>`;
+
+  document.getElementById('main-content').innerHTML=`
+    <div class="summary-wrap">
+      <div class="sum-hero">
+        <div class="sum-hero-title">Summary — Week of ${weekLabel(currentWeek)}</div>
+        <div class="sum-stats">
+          <div class="sum-stat"><div class="sum-stat-n n-green">${done}</div><div class="sum-stat-l">All done</div></div>
+          <div class="sum-stat"><div class="sum-stat-n n-amber">${prog}</div><div class="sum-stat-l">Partial</div></div>
+          <div class="sum-stat"><div class="sum-stat-n n-red">${none}</div><div class="sum-stat-l">Not started</div></div>
+          <div class="sum-stat"><div class="sum-stat-n n-blue">${pending}</div><div class="sum-stat-l">Flagged</div></div>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="tl-section">
+        <div class="section-title">Traffic light — student status</div>
+        <div class="tl-grid">${tlCards}</div>
+      </div>
+      <div class="incomplete-section">
+        <div class="section-title">Students with incomplete tasks</div>
+        <table class="incomplete-table">
+          <thead><tr><th>Student</th><th>Progress</th><th>Missing tasks (🚩 = flagged for check)</th></tr></thead>
+          <tbody>${incompleteRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderStudentsPage(){
+  const cards=students.map(s=>{
+    const avIdx=s.name.charCodeAt(0)%8;
+    const [bg,fg]=AV_COLORS[avIdx];
+    const initials=s.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    return `<div class="stu-card">
+      <div class="stu-card-top">
+        <div class="avatar" style="background:${bg};color:${fg};width:34px;height:34px;font-size:11px">${initials}</div>
+        <div>
+          <div class="stu-name">${esc(s.name)}</div>
+          <div class="stu-code">${esc(s.code||'—')}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('main-content').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">Students & Login Codes</div>
+    </div>
+    <div class="codes-note">
+      Give each student their 6-character code. They go to the <strong>student page</strong> and enter their code to log in and see their tasks. 
+      Codes are permanent — students use the same code each week.
+    </div>
+    <div class="students-grid">${cards}</div>`;
+}
+
+// ── ACTIONS ──────────────────────────────────────────
+async function markAllDone(){
+  if(!tasks.length){showToast('Add tasks first');return;}
+  const rows=[];
+  students.forEach(s=>{
+    tasks.forEach(t=>{
+      const c=getComp(s.id,t.id);
+      if(!c)rows.push({student_id:s.id,task_id:t.id,week_key:currentWeek,status:'done',confirmed_at:new Date().toISOString()});
+    });
+  });
+  if(rows.length)await sb.from('completions').upsert(rows,{onConflict:'student_id,task_id,week_key'});
+  await loadAll();showToast('All marked done');
+}
+async function clearWeek(){
+  if(!confirm('Clear all completions for this week?'))return;
+  await sb.from('completions').delete().eq('week_key',currentWeek);
+  await loadAll();showToast('Week cleared');
+}
+
+function showPage(p){
+  currentPage=p;
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>{
+    t.classList.toggle('active',['tracker','summary','students'][i]===p);
+  });
+  renderAll();
+}
+
+function exportCSV(){
+  const headers=['Student','Code',...tasks.map(t=>t.name),'Done','Total','% Complete'];
+  const rows=students.map(s=>{
+    const checks=tasks.map(t=>{const c=getComp(s.id,t.id);return c&&c.status==='done'?'1':c&&c.status==='pending'?'pending':'0';});
+    const p=getProgress(s.id);
+    return [`"${s.name}"`,s.code||'',...checks,p.done,p.total,p.pct+'%'];
+  });
+  const csv=[headers,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`tasks-${currentWeek}.csv`;a.click();
+  showToast('CSV exported');
+}
+
+let toastT;
+function showToast(msg){
+  clearTimeout(toastT);
+  document.getElementById('toast-root').innerHTML=`<div class="toast">${msg}</div>`;
+  toastT=setTimeout(()=>{document.getElementById('toast-root').innerHTML='';},2400);
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── INIT ──────────────────────────────────────────
+(function(){
+  const url=localStorage.getItem('sb_url');
+  const key=localStorage.getItem('sb_key');
+  if(url&&key){
+    document.getElementById('cfg-url').value=url;
+    document.getElementById('cfg-key').value=key;
+    initSupabase(url,key);
+  }
+})();
+</script>
+</body>
+</html>
